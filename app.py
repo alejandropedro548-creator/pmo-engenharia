@@ -1,481 +1,968 @@
+"""
+===========================================================
+LIMA ERP
+
+Sistema de Gestão Comercial
+
+Empresa:
+Atacadão do Lima
+
+Tecnologia:
+Python + Streamlit
+
+Versão:
+1.0.0
+===========================================================
+"""
+
+
+# ==========================================================
+# IMPORTAÇÕES
+# ==========================================================
+
 import streamlit as st
 import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
-from datetime import datetime
-import io
- 
-# ─── CONFIG ──────────────────────────────────────────────────────────────────
+from datetime import datetime, date
+
+
+# ==========================================================
+# CONFIGURAÇÃO DA PÁGINA
+# ==========================================================
+
 st.set_page_config(
-    page_title="PMO Engenharia — Indicadores",
-    page_icon="📊",
+    page_title="LIMA ERP",
+    page_icon="🛒",
     layout="wide",
     initial_sidebar_state="expanded"
 )
- 
-# ─── STYLE ───────────────────────────────────────────────────────────────────
-st.markdown("""
-<style>
-    /* Esconde o menu padrão e rodapé do Streamlit */
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
- 
-    /* Fundo e texto */
-    .stApp { background-color: #0d0f14; color: #e8eaf0; }
- 
-    /* Sidebar */
-    section[data-testid="stSidebar"] {
-        background-color: #14171f;
-        border-right: 1px solid rgba(255,255,255,0.07);
+
+
+# ==========================================================
+# IDENTIDADE VISUAL
+# ==========================================================
+
+st.markdown(
+    """
+    <style>
+
+    /* Remove elementos padrões */
+
+    #MainMenu {
+        visibility: hidden;
     }
- 
-    /* Cards de KPI */
-    .kpi-card {
-        background: #14171f;
-        border: 1px solid rgba(255,255,255,0.07);
-        border-radius: 12px;
-        padding: 1.2rem 1.4rem;
-        text-align: center;
-        border-top: 3px solid;
+
+    footer {
+        visibility: hidden;
     }
-    .kpi-label { font-size: 11px; color: #8b90a0; text-transform: uppercase; letter-spacing: 1px; }
-    .kpi-value { font-size: 2.2rem; font-weight: 700; margin: 8px 0 4px; }
-    .kpi-sub   { font-size: 12px; color: #555a6e; }
- 
+
+    header {
+        visibility: hidden;
+    }
+
+
+    /* Fundo */
+
+    .stApp {
+
+        background-color: #F8FAFC;
+
+    }
+
+
     /* Títulos */
-    h1, h2, h3 { color: #e8eaf0 !important; }
- 
-    /* Inputs */
-    .stTextInput input, .stNumberInput input, .stSelectbox select, .stTextArea textarea {
-        background-color: #1c2030 !important;
-        color: #e8eaf0 !important;
-        border: 1px solid rgba(255,255,255,0.13) !important;
-        border-radius: 8px !important;
+
+    .titulo-principal {
+
+        font-size: 42px;
+
+        font-weight: 800;
+
+        color: #166534;
+
+        margin-bottom: 0px;
+
     }
- 
+
+
+    .subtitulo {
+
+        font-size: 18px;
+
+        color: #475569;
+
+    }
+
+
+    /* Cartões */
+
+    .card {
+
+        background-color: white;
+
+        padding: 20px;
+
+        border-radius: 16px;
+
+        box-shadow:
+        0px 4px 15px rgba(0,0,0,0.08);
+
+    }
+
+
     /* Botões */
-    .stButton > button {
-        background-color: #4f7cff;
+
+    div.stButton > button {
+
+        width: 100%;
+
+        height: 45px;
+
+        border-radius: 10px;
+
+        background-color: #15803D;
+
         color: white;
+
+        font-weight: 700;
+
         border: none;
-        border-radius: 8px;
-        font-weight: 500;
+
     }
-    .stButton > button:hover { background-color: #3d6be8; }
- 
-    /* Dataframe */
-    .stDataFrame { background-color: #14171f; }
- 
-    /* Divider */
-    hr { border-color: rgba(255,255,255,0.07); }
- 
-    /* Tabs */
-    .stTabs [data-baseweb="tab"] {
-        background-color: #14171f;
-        color: #8b90a0;
-        border-radius: 8px 8px 0 0;
+
+
+    div.stButton > button:hover {
+
+        background-color: #166534;
+
+        color:white;
+
     }
-    .stTabs [aria-selected="true"] {
-        background-color: #1c2030;
-        color: #e8eaf0;
+
+
+    /* Inputs */
+
+    input {
+
+        border-radius: 10px !important;
+
     }
-</style>
-""", unsafe_allow_html=True)
- 
-# ─── DADOS INICIAIS ───────────────────────────────────────────────────────────
-DADOS_EXEMPLO = [
-    {"Nome": "Expansão Planta Unidade A",    "Categoria": "Infraestrutura",   "Ano": 2023, "Status": "Concluído",    "Classificação": 5, "Progresso": 100, "Responsável": "Carlos Mendes"},
-    {"Nome": "Implantação Sistema SCADA",    "Categoria": "Tecnologia",       "Ano": 2024, "Status": "Em Andamento", "Classificação": 4, "Progresso": 65,  "Responsável": "Ana Lima"},
-    {"Nome": "Retrofit Subestação Elétrica", "Categoria": "Manutenção",       "Ano": 2024, "Status": "Atrasado",    "Classificação": 2, "Progresso": 30,  "Responsável": "João Silva"},
-    {"Nome": "Construção Galpão Logístico",  "Categoria": "Infraestrutura",   "Ano": 2023, "Status": "Concluído",    "Classificação": 4, "Progresso": 100, "Responsável": "Beatriz Costa"},
-    {"Nome": "Certificação ISO 9001",        "Categoria": "Qualidade",        "Ano": 2024, "Status": "Em Andamento", "Classificação": 4, "Progresso": 50,  "Responsável": "Marcos Prado"},
-    {"Nome": "Melhoria Eficiência Energética","Categoria":"Sustentabilidade", "Ano": 2023, "Status": "Concluído",    "Classificação": 5, "Progresso": 100, "Responsável": "Lúcia Ferreira"},
-    {"Nome": "Novo ERP Corporativo",         "Categoria": "Tecnologia",       "Ano": 2025, "Status": "Planejado",   "Classificação": 3, "Progresso": 0,   "Responsável": "Rafael Melo"},
-    {"Nome": "Plano de Segurança Ocupacional","Categoria":"Segurança",        "Ano": 2024, "Status": "Em Andamento", "Classificação": 5, "Progresso": 80,  "Responsável": "Fabiana Torres"},
-    {"Nome": "Modernização Linha de Produção","Categoria":"Infraestrutura",   "Ano": 2025, "Status": "Planejado",   "Classificação": 3, "Progresso": 5,   "Responsável": "Diego Alves"},
-    {"Nome": "Programa Lean Manufacturing",  "Categoria": "Qualidade",        "Ano": 2023, "Status": "Concluído",    "Classificação": 4, "Progresso": 100, "Responsável": "Priya Nair"},
-]
- 
-STATUS_CORES = {
-    "Concluído":    "#2dd4a0",
-    "Em Andamento": "#4f7cff",
-    "Atrasado":     "#f05c5c",
-    "Planejado":    "#8b90a0",
-    "Pausado":      "#f0964a",
-    "Cancelado":    "#a78bfa",
-}
- 
-CATEGORIAS_PADRAO = [
-    "Infraestrutura", "Tecnologia", "Manutenção", "Qualidade",
-    "Sustentabilidade", "Segurança", "Financeiro", "RH", "Outro"
-]
- 
-# ─── SESSION STATE ────────────────────────────────────────────────────────────
-if "projetos" not in st.session_state:
-    st.session_state.projetos = pd.DataFrame(DADOS_EXEMPLO)
- 
-if "editando_idx" not in st.session_state:
-    st.session_state.editando_idx = None
- 
- 
-# ─── FUNÇÕES AUXILIARES ───────────────────────────────────────────────────────
-def estrelas(n):
-    return "⭐" * int(n) + "☆" * (5 - int(n))
- 
-def get_df_filtrado(df, filtro_ano, filtro_cat, filtro_status, busca):
-    mask = pd.Series([True] * len(df), index=df.index)
-    if filtro_ano != "Todos":
-        mask &= df["Ano"] == int(filtro_ano)
-    if filtro_cat != "Todas":
-        mask &= df["Categoria"] == filtro_cat
-    if filtro_status != "Todos":
-        mask &= df["Status"] == filtro_status
-    if busca:
-        q = busca.lower()
-        mask &= (
-            df["Nome"].str.lower().str.contains(q, na=False) |
-            df["Categoria"].str.lower().str.contains(q, na=False) |
-            df["Responsável"].str.lower().str.contains(q, na=False)
-        )
-    return df[mask].copy()
- 
- 
-# ─── SIDEBAR ─────────────────────────────────────────────────────────────────
+
+
+    /* Separadores */
+
+    hr {
+
+        border: 1px solid #E2E8F0;
+
+    }
+
+
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+
+
+# ==========================================================
+# SESSION STATE
+# ==========================================================
+
+def iniciar_sistema():
+
+    """
+    Inicializa todas as estruturas
+    utilizadas pelo sistema.
+    """
+
+
+    if "produtos" not in st.session_state:
+
+        st.session_state.produtos = []
+
+
+    if "vendas" not in st.session_state:
+
+        st.session_state.vendas = []
+
+
+    if "usuario" not in st.session_state:
+
+        st.session_state.usuario = None
+
+
+    if "perfil" not in st.session_state:
+
+        st.session_state.perfil = None
+
+
+
+    if "autenticado" not in st.session_state:
+
+        st.session_state.autenticado = False
+
+
+
+iniciar_sistema()
+
+
+
+# ==========================================================
+# FUNÇÕES AUXILIARES
+# ==========================================================
+
+
+def gerar_codigo_produto():
+
+    """
+    Gera código automático
+    para novos produtos.
+    """
+
+    quantidade = len(st.session_state.produtos) + 1
+
+    return f"LIMA-{quantidade:06d}"
+
+
+
+
+def formatar_moeda(valor):
+
+    """
+    Formata valores monetários.
+    """
+
+    return f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+
+
+
+# ==========================================================
+# CABEÇALHO DO SISTEMA
+# ==========================================================
+
+
+coluna1, coluna2 = st.columns([1,5])
+
+
+with coluna1:
+
+    st.image(
+        "https://cdn-icons-png.flaticon.com/512/3081/3081559.png",
+        width=90
+    )
+
+
+with coluna2:
+
+    st.markdown(
+        """
+        <div class="titulo-principal">
+        LIMA ERP
+        </div>
+
+        <div class="subtitulo">
+        Sistema de Gestão Comercial - Atacadão do Lima
+        </div>
+
+        """,
+        unsafe_allow_html=True
+    )
+
+
+
+st.divider()
+
+
+
+# ==========================================================
+# SIDEBAR BASE
+# ==========================================================
+
+
 with st.sidebar:
-    st.markdown("## 📊 PMO Engenharia")
-    st.markdown("**Indicadores de Projetos**")
+
+
+    st.markdown(
+        """
+        ## LIMA ERP
+
+        Sistema Comercial
+
+        Versão 1.0.0
+
+        """
+    )
+
+
     st.divider()
- 
-    st.markdown("### 🔍 Filtros")
-    df = st.session_state.projetos
- 
-    anos = ["Todos"] + sorted(df["Ano"].unique().tolist(), reverse=True) if len(df) > 0 else ["Todos"]
-    filtro_ano = st.selectbox("Ano", anos)
- 
-    cats = ["Todas"] + sorted(df["Categoria"].unique().tolist()) if len(df) > 0 else ["Todas"]
-    filtro_cat = st.selectbox("Categoria", cats)
- 
-    statuses = ["Todos"] + sorted(df["Status"].unique().tolist()) if len(df) > 0 else ["Todos"]
-    filtro_status = st.selectbox("Status", statuses)
- 
-    busca = st.text_input("🔎 Buscar projeto...")
- 
-    st.divider()
- 
-    # Contagem por status na sidebar
-    if len(df) > 0:
-        st.markdown("### 📌 Por Status")
-        for s, cor in STATUS_CORES.items():
-            cnt = len(df[df["Status"] == s])
-            if cnt > 0:
-                st.markdown(f"<span style='color:{cor}'>●</span> **{s}**: {cnt}", unsafe_allow_html=True)
- 
-    st.divider()
- 
-    # Importar CSV
-    st.markdown("### 📥 Importar CSV")
-    uploaded = st.file_uploader("Carregar CSV", type=["csv"])
-    if uploaded:
-        try:
-            df_import = pd.read_csv(uploaded)
-            cols_req = {"Nome","Categoria","Ano","Status","Classificação","Progresso","Responsável"}
-            if cols_req.issubset(set(df_import.columns)):
-                st.session_state.projetos = df_import
-                st.success("✅ Importado com sucesso!")
-                st.rerun()
-            else:
-                st.error(f"CSV precisa ter as colunas: {cols_req}")
-        except Exception as e:
-            st.error(f"Erro ao ler CSV: {e}")
- 
- 
-# ─── CONTEÚDO PRINCIPAL ───────────────────────────────────────────────────────
-st.markdown("# 📊 PMO Engenharia — Indicadores de Projetos")
- 
-df = st.session_state.projetos
-df_f = get_df_filtrado(df, filtro_ano, filtro_cat, filtro_status, busca)
- 
-# ─── TABS ─────────────────────────────────────────────────────────────────────
-tab_dash, tab_projetos, tab_add = st.tabs(["📈 Dashboard", "📋 Projetos", "➕ Novo / Editar Projeto"])
- 
- 
-# ══════════════════════════════════════════════════════════════
-# TAB 1 — DASHBOARD
-# ══════════════════════════════════════════════════════════════
-with tab_dash:
-    if len(df_f) == 0:
-        st.info("Nenhum projeto encontrado com os filtros selecionados.")
-    else:
-        # KPI CARDS
-        total   = len(df_f)
-        concl   = len(df_f[df_f["Status"] == "Concluído"])
-        andamen = len(df_f[df_f["Status"] == "Em Andamento"])
-        atras   = len(df_f[df_f["Status"] == "Atrasado"])
-        pct     = round(concl / total * 100) if total else 0
-        avg_cl  = round(df_f["Classificação"].mean(), 1) if total else 0
- 
-        c1, c2, c3, c4, c5 = st.columns(5)
-        with c1:
-            st.markdown(f"""<div class="kpi-card" style="border-top-color:#4f7cff">
-                <div class="kpi-label">Total de Projetos</div>
-                <div class="kpi-value" style="color:#4f7cff">{total}</div>
-                <div class="kpi-sub">cadastrados</div>
-            </div>""", unsafe_allow_html=True)
-        with c2:
-            st.markdown(f"""<div class="kpi-card" style="border-top-color:#2dd4a0">
-                <div class="kpi-label">Concluídos</div>
-                <div class="kpi-value" style="color:#2dd4a0">{concl}</div>
-                <div class="kpi-sub">{pct}% do total</div>
-            </div>""", unsafe_allow_html=True)
-        with c3:
-            st.markdown(f"""<div class="kpi-card" style="border-top-color:#4f7cff">
-                <div class="kpi-label">Em Andamento</div>
-                <div class="kpi-value" style="color:#4f7cff">{andamen}</div>
-                <div class="kpi-sub">projetos ativos</div>
-            </div>""", unsafe_allow_html=True)
-        with c4:
-            st.markdown(f"""<div class="kpi-card" style="border-top-color:#f05c5c">
-                <div class="kpi-label">Atrasados</div>
-                <div class="kpi-value" style="color:#f05c5c">{atras}</div>
-                <div class="kpi-sub">requerem atenção</div>
-            </div>""", unsafe_allow_html=True)
-        with c5:
-            st.markdown(f"""<div class="kpi-card" style="border-top-color:#f5c842">
-                <div class="kpi-label">Nota Média</div>
-                <div class="kpi-value" style="color:#f5c842">{avg_cl}</div>
-                <div class="kpi-sub">classificação ⭐</div>
-            </div>""", unsafe_allow_html=True)
- 
-        st.markdown("<br>", unsafe_allow_html=True)
- 
-        # LINHA 1 DE GRÁFICOS
-        col_a, col_b = st.columns(2)
- 
-        with col_a:
-            st.markdown("##### Status por Categoria")
-            df_cat = df_f.groupby(["Categoria","Status"]).size().reset_index(name="Quantidade")
-            fig_bar = px.bar(
-                df_cat, x="Categoria", y="Quantidade", color="Status",
-                color_discrete_map=STATUS_CORES,
-                template="plotly_dark",
-                barmode="stack",
-            )
-            fig_bar.update_layout(
-                paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-                font_color="#8b90a0", showlegend=True,
-                legend=dict(orientation="h", y=1.1, font=dict(size=10)),
-                margin=dict(l=0,r=0,t=30,b=0), height=280,
-            )
-            fig_bar.update_xaxes(gridcolor="rgba(255,255,255,0.05)")
-            fig_bar.update_yaxes(gridcolor="rgba(255,255,255,0.05)", dtick=1)
-            st.plotly_chart(fig_bar, use_container_width=True)
- 
-        with col_b:
-            st.markdown("##### Distribuição por Status")
-            df_status = df_f["Status"].value_counts().reset_index()
-            df_status.columns = ["Status","Quantidade"]
-            fig_donut = px.pie(
-                df_status, names="Status", values="Quantidade",
-                color="Status", color_discrete_map=STATUS_CORES,
-                hole=0.55, template="plotly_dark",
-            )
-            fig_donut.update_layout(
-                paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-                font_color="#8b90a0",
-                legend=dict(orientation="h", y=-0.1, font=dict(size=10)),
-                margin=dict(l=0,r=0,t=20,b=0), height=280,
-            )
-            fig_donut.update_traces(textinfo="label+percent", textfont_color="#e8eaf0")
-            st.plotly_chart(fig_donut, use_container_width=True)
- 
-        # LINHA 2 DE GRÁFICOS
-        col_c, col_d = st.columns(2)
- 
-        with col_c:
-            st.markdown("##### Projetos por Ano")
-            df_ano = df_f.groupby(["Ano","Status"]).size().reset_index(name="Quantidade")
-            fig_line = px.line(
-                df_ano, x="Ano", y="Quantidade", color="Status",
-                color_discrete_map=STATUS_CORES,
-                markers=True, template="plotly_dark",
-            )
-            fig_line.update_layout(
-                paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-                font_color="#8b90a0",
-                legend=dict(orientation="h", y=1.1, font=dict(size=10)),
-                margin=dict(l=0,r=0,t=30,b=0), height=260,
-            )
-            fig_line.update_xaxes(gridcolor="rgba(255,255,255,0.05)", dtick=1)
-            fig_line.update_yaxes(gridcolor="rgba(255,255,255,0.05)", dtick=1)
-            st.plotly_chart(fig_line, use_container_width=True)
- 
-        with col_d:
-            st.markdown("##### Progresso Médio por Categoria")
-            df_prog = df_f.groupby("Categoria")["Progresso"].mean().reset_index()
-            df_prog.columns = ["Categoria", "Progresso Médio (%)"]
-            df_prog = df_prog.sort_values("Progresso Médio (%)", ascending=True)
-            fig_hbar = px.bar(
-                df_prog, x="Progresso Médio (%)", y="Categoria",
-                orientation="h", template="plotly_dark",
-                color="Progresso Médio (%)",
-                color_continuous_scale=["#f05c5c","#f5c842","#2dd4a0"],
-                range_color=[0,100],
-            )
-            fig_hbar.update_layout(
-                paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-                font_color="#8b90a0", showlegend=False,
-                coloraxis_showscale=False,
-                margin=dict(l=0,r=0,t=10,b=0), height=260,
-            )
-            fig_hbar.update_xaxes(gridcolor="rgba(255,255,255,0.05)", range=[0,105])
-            fig_hbar.update_yaxes(gridcolor="rgba(255,255,255,0.05)")
-            st.plotly_chart(fig_hbar, use_container_width=True)
- 
-        # SCATTER — Classificação vs Progresso
-        st.markdown("##### Classificação vs. Progresso")
-        fig_sc = px.scatter(
-            df_f, x="Progresso", y="Classificação",
-            color="Status", size_max=14,
-            color_discrete_map=STATUS_CORES,
-            hover_name="Nome",
-            hover_data={"Categoria":True,"Ano":True,"Responsável":True},
-            template="plotly_dark",
+
+
+
+    if st.session_state.autenticado:
+
+
+        st.success(
+            f"""
+Usuário:
+
+{st.session_state.usuario}
+
+Perfil:
+
+{st.session_state.perfil}
+            """
         )
-        fig_sc.update_layout(
-            paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-            font_color="#8b90a0",
-            legend=dict(orientation="h", y=1.05, font=dict(size=10)),
-            margin=dict(l=0,r=0,t=30,b=0), height=300,
-        )
-        fig_sc.update_xaxes(gridcolor="rgba(255,255,255,0.05)", title="Progresso (%)", range=[-5,105])
-        fig_sc.update_yaxes(gridcolor="rgba(255,255,255,0.05)", title="Classificação ⭐", range=[0.5,5.5], dtick=1)
-        fig_sc.update_traces(marker=dict(size=12, opacity=0.85))
-        st.plotly_chart(fig_sc, use_container_width=True)
- 
- 
-# ══════════════════════════════════════════════════════════════
-# TAB 2 — PROJETOS
-# ══════════════════════════════════════════════════════════════
-with tab_projetos:
-    if len(df_f) == 0:
-        st.info("Nenhum projeto encontrado.")
-    else:
-        # Exibição enriquecida
-        df_view = df_f.copy()
-        df_view["⭐"] = df_view["Classificação"].apply(estrelas)
-        df_view["Progresso"] = df_view["Progresso"].apply(lambda x: f"{x}%")
- 
-        st.dataframe(
-            df_view[["Nome","Categoria","Ano","Status","⭐","Progresso","Responsável"]],
-            use_container_width=True,
-            hide_index=True,
-        )
- 
-        st.divider()
-        st.markdown("### 🗑 Excluir Projeto")
-        nomes = df_f["Nome"].tolist()
-        nome_del = st.selectbox("Selecione o projeto para excluir", ["— selecione —"] + nomes)
-        if nome_del != "— selecione —":
-            if st.button(f"❌ Excluir '{nome_del}'", type="secondary"):
-                st.session_state.projetos = st.session_state.projetos[
-                    st.session_state.projetos["Nome"] != nome_del
-                ].reset_index(drop=True)
-                st.success(f"Projeto '{nome_del}' excluído.")
-                st.rerun()
- 
-        st.divider()
-        st.markdown("### 📤 Exportar CSV")
-        csv_bytes = df_f.to_csv(index=False).encode("utf-8-sig")
-        st.download_button(
-            label="⬇ Baixar CSV filtrado",
-            data=csv_bytes,
-            file_name="pmo_projetos.csv",
-            mime="text/csv",
-        )
- 
- 
-# ══════════════════════════════════════════════════════════════
-# TAB 3 — ADICIONAR / EDITAR
-# ══════════════════════════════════════════════════════════════
-with tab_add:
-    st.markdown("### ➕ Cadastrar / Editar Projeto")
- 
-    # Editar existente?
-    df_cur = st.session_state.projetos
-    modo = st.radio("Modo", ["Novo projeto", "Editar projeto existente"], horizontal=True)
- 
-    valores_default = {
-        "Nome": "", "Categoria": CATEGORIAS_PADRAO[0], "Ano": datetime.now().year,
-        "Status": "Em Andamento", "Classificação": 3, "Progresso": 0, "Responsável": ""
+
+
+        if st.button("Sair"):
+
+            st.session_state.usuario = None
+
+            st.session_state.perfil = None
+
+            st.session_state.autenticado = False
+
+            st.rerun()
+
+
+
+# ==========================================================
+# ÁREA PRINCIPAL TEMPORÁRIA
+# ==========================================================
+
+
+if not st.session_state.autenticado:
+
+
+    st.info(
+        """
+        Sistema iniciado.
+
+        Próxima etapa:
+        implementação da tela de login profissional.
+        """
+    )
+
+
+else:
+
+
+    st.success(
+        "Sistema carregado com sucesso."
+    )
+# ==========================================================
+# ÁREA PRINCIPAL TEMPORÁRIA
+# ==========================================================
+# ==========================================================
+# USUÁRIOS DO SISTEMA
+# ==========================================================
+
+
+USUARIOS = {
+
+    "admin": {
+
+        "senha": "1234",
+
+        "nome": "Administrador",
+
+        "perfil": "Administrador"
+
+    },
+
+
+    "estoque": {
+
+        "senha": "1234",
+
+        "nome": "Funcionário Estoque",
+
+        "perfil": "Funcionário"
+
+    },
+
+
+    "caixa": {
+
+        "senha": "1234",
+
+        "nome": "Operador de Caixa",
+
+        "perfil": "Caixa"
+
     }
- 
-    if modo == "Editar projeto existente" and len(df_cur) > 0:
-        nome_edit = st.selectbox("Selecione o projeto", df_cur["Nome"].tolist())
-        row = df_cur[df_cur["Nome"] == nome_edit].iloc[0]
-        valores_default = row.to_dict()
- 
-    with st.form("form_projeto", clear_on_submit=(modo == "Novo projeto")):
-        c1, c2 = st.columns(2)
-        with c1:
-            nome    = st.text_input("Nome do Projeto *", value=str(valores_default["Nome"]))
-            cat_opts = sorted(set(CATEGORIAS_PADRAO + df_cur["Categoria"].tolist())) if len(df_cur) > 0 else CATEGORIAS_PADRAO
-            cat_idx  = cat_opts.index(valores_default["Categoria"]) if valores_default["Categoria"] in cat_opts else 0
-            cat     = st.selectbox("Categoria *", cat_opts, index=cat_idx)
-            cat_nova = st.text_input("Ou digitar nova categoria", placeholder="Ex: Inovação")
-        with c2:
-            ano     = st.number_input("Ano *", min_value=2000, max_value=2099, value=int(valores_default["Ano"]))
-            status_opts = list(STATUS_CORES.keys())
-            st_idx  = status_opts.index(valores_default["Status"]) if valores_default["Status"] in status_opts else 0
-            status  = st.selectbox("Status *", status_opts, index=st_idx)
- 
-        c3, c4 = st.columns(2)
-        with c3:
-            classif = st.slider("Classificação ⭐", 1, 5, int(valores_default["Classificação"]))
-            progress = st.slider("Progresso (%)", 0, 100, int(valores_default["Progresso"]))
-        with c4:
-            owner   = st.text_input("Responsável", value=str(valores_default.get("Responsável","")))
- 
-        submitted = st.form_submit_button("💾 Salvar Projeto", type="primary", use_container_width=True)
- 
-        if submitted:
-            if not nome.strip():
-                st.error("O nome do projeto é obrigatório.")
-            else:
-                cat_final = cat_nova.strip() if cat_nova.strip() else cat
-                novo = {
-                    "Nome": nome.strip(),
-                    "Categoria": cat_final,
-                    "Ano": int(ano),
-                    "Status": status,
-                    "Classificação": classif,
-                    "Progresso": progress,
-                    "Responsável": owner.strip(),
-                }
- 
-                df_cur = st.session_state.projetos
- 
-                if modo == "Editar projeto existente" and len(df_cur) > 0:
-                    idx = df_cur.index[df_cur["Nome"] == nome_edit].tolist()
-                    if idx:
-                        for k, v in novo.items():
-                            st.session_state.projetos.at[idx[0], k] = v
-                        st.success(f"✅ Projeto '{nome}' atualizado!")
-                    else:
-                        st.session_state.projetos = pd.concat(
-                            [st.session_state.projetos, pd.DataFrame([novo])], ignore_index=True
-                        )
-                        st.success(f"✅ Projeto '{nome}' cadastrado!")
-                else:
-                    st.session_state.projetos = pd.concat(
-                        [st.session_state.projetos, pd.DataFrame([novo])], ignore_index=True
-                    )
-                    st.success(f"✅ Projeto '{nome}' cadastrado com sucesso!")
- 
+
+}
+
+
+
+# ==========================================================
+# AUTENTICAÇÃO
+# ==========================================================
+
+
+def autenticar_usuario(usuario, senha):
+
+    """
+    Verifica se usuário e senha
+    existem no sistema.
+    """
+
+
+    if usuario in USUARIOS:
+
+
+        if USUARIOS[usuario]["senha"] == senha:
+
+
+            return USUARIOS[usuario]
+
+
+    return None
+
+
+
+
+# ==========================================================
+# TELA DE LOGIN
+# ==========================================================
+
+
+def tela_login():
+
+
+    st.markdown(
+        """
+        <div class="card">
+
+        <h2 style="text-align:center;color:#166534;">
+        Acesso ao Sistema
+        </h2>
+
+        <p style="text-align:center;color:#64748B;">
+        Entre com suas credenciais para acessar o LIMA ERP
+        </p>
+
+        </div>
+
+        """,
+        unsafe_allow_html=True
+    )
+
+
+    st.write("")
+
+
+    coluna1, coluna2, coluna3 = st.columns(
+        [1,2,1]
+    )
+
+
+    with coluna2:
+
+
+        usuario = st.text_input(
+            "Usuário"
+        )
+
+
+        senha = st.text_input(
+            "Senha",
+            type="password"
+        )
+
+
+        entrar = st.button(
+            "Entrar no Sistema"
+        )
+
+
+        if entrar:
+
+
+            dados_usuario = autenticar_usuario(
+                usuario,
+                senha
+            )
+
+
+            if dados_usuario:
+
+
+                st.session_state.usuario = dados_usuario["nome"]
+
+                st.session_state.perfil = dados_usuario["perfil"]
+
+                st.session_state.autenticado = True
+
+
+                st.success(
+                    "Login realizado com sucesso."
+                )
+
+
                 st.rerun()
- 
-    st.divider()
-    st.markdown("### ♻️ Resetar para dados de exemplo")
-    if st.button("Resetar dados de exemplo"):
-        st.session_state.projetos = pd.DataFrame(DADOS_EXEMPLO)
-        st.success("Dados resetados!")
-        st.rerun()
+
+
+
+            else:
+
+
+                st.error(
+                    "Usuário ou senha incorretos."
+                )
+
+
+
+
+# ==========================================================
+# MENU DO SISTEMA
+# ==========================================================
+
+
+def menu_usuario():
+
+
+    perfil = st.session_state.perfil
+
+
+
+    if perfil == "Administrador":
+
+
+        paginas = [
+
+            "Dashboard",
+
+            "Cadastro de Produtos",
+
+            "Estoque",
+
+            "Caixa",
+
+            "Painel Gerencial",
+
+            "Sobre Nós"
+
+        ]
+
+
+
+    elif perfil == "Funcionário":
+
+
+        paginas = [
+
+            "Cadastro de Produtos",
+
+            "Estoque",
+
+            "Sobre Nós"
+
+        ]
+
+
+
+    else:
+
+
+        paginas = [
+
+            "Caixa",
+
+            "Sobre Nós"
+
+        ]
+
+
+
+    escolha = st.sidebar.radio(
+
+        "Navegação",
+
+        paginas
+
+    )
+
+
+    return escolha
+
+
+
+
+# ==========================================================
+# CONTROLE PRINCIPAL DO SISTEMA
+# ==========================================================
+
+
+
+if not st.session_state.autenticado:
+
+
+    tela_login()
+
+
+else:
+
+
+    pagina = menu_usuario()
+
+
+
+    st.sidebar.divider()
+
+
+    st.sidebar.caption(
+
+        f"Sessão ativa: {st.session_state.usuario}"
+
+    )
+
+
+    # ------------------------------------------------------
+    # Módulos temporários
+    # Serão substituídos pelas funções reais
+    # ------------------------------------------------------
+
+
+        if pagina == "Dashboard":
+
+
+        # ==================================================
+        # DASHBOARD GERENCIAL
+        # ==================================================
+
+
+        st.markdown(
+            f"""
+            <h1 style="color:#166534;">
+            Bem-vindo, {st.session_state.usuario}
+            </h1>
+
+            <p style="color:#64748B;font-size:18px;">
+            Visão geral do funcionamento do Atacadão do Lima.
+            </p>
+
+            """,
+            unsafe_allow_html=True
+        )
+
+
+
+        st.divider()
+
+
+
+        # ==================================================
+        # CÁLCULO DOS INDICADORES
+        # ==================================================
+
+
+        total_produtos = len(
+            st.session_state.produtos
+        )
+
+
+        categorias = []
+
+
+        for produto in st.session_state.produtos:
+
+
+            if "categoria" in produto:
+
+
+                categorias.append(
+                    produto["categoria"]
+                )
+
+
+        total_categorias = len(
+            set(categorias)
+        )
+
+
+
+        valor_estoque = 0
+
+
+        for produto in st.session_state.produtos:
+
+
+            if "preco_venda" in produto and "quantidade" in produto:
+
+
+                valor_estoque += (
+
+                    produto["preco_venda"]
+
+                    *
+
+                    produto["quantidade"]
+
+                )
+
+
+
+
+        produtos_vencimento = 0
+
+
+
+        # ==================================================
+        # CARTÕES PRINCIPAIS
+        # ==================================================
+
+
+        coluna1, coluna2, coluna3, coluna4 = st.columns(4)
+
+
+
+        with coluna1:
+
+
+            st.markdown(
+                f"""
+                <div class="card">
+
+                <h4 style="color:#64748B;">
+                Produtos
+                </h4>
+
+                <h2 style="color:#166534;">
+                {total_produtos}
+                </h2>
+
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+
+
+
+        with coluna2:
+
+
+            st.markdown(
+                f"""
+                <div class="card">
+
+                <h4 style="color:#64748B;">
+                Categorias
+                </h4>
+
+                <h2 style="color:#166534;">
+                {total_categorias}
+                </h2>
+
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+
+
+
+        with coluna3:
+
+
+            st.markdown(
+                f"""
+                <div class="card">
+
+                <h4 style="color:#64748B;">
+                Valor Estoque
+                </h4>
+
+                <h2 style="color:#166534;">
+                R$ {valor_estoque:,.2f}
+                </h2>
+
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+
+
+
+        with coluna4:
+
+
+            st.markdown(
+                f"""
+                <div class="card">
+
+                <h4 style="color:#64748B;">
+                Alertas
+                </h4>
+
+                <h2 style="color:#CA8A04;">
+                {produtos_vencimento}
+                </h2>
+
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+
+
+
+        st.write("")
+
+        st.divider()
+
+
+
+        # ==================================================
+        # GRÁFICO DE CATEGORIAS
+        # ==================================================
+
+
+        st.subheader(
+            "Distribuição de Produtos por Categoria"
+        )
+
+
+        if len(st.session_state.produtos) > 0:
+
+
+
+            dados_categoria = {}
+
+
+
+            for produto in st.session_state.produtos:
+
+
+                categoria = produto.get(
+                    "categoria",
+                    "Sem categoria"
+                )
+
+
+                if categoria in dados_categoria:
+
+
+                    dados_categoria[categoria] += 1
+
+
+                else:
+
+
+                    dados_categoria[categoria] = 1
+
+
+
+
+            grafico = pd.DataFrame(
+
+                {
+
+                    "Categoria":
+
+                    list(dados_categoria.keys()),
+
+
+                    "Quantidade":
+
+                    list(dados_categoria.values())
+
+                }
+
+            )
+
+
+
+            st.bar_chart(
+
+                grafico,
+
+                x="Categoria",
+
+                y="Quantidade"
+
+            )
+
+
+
+        else:
+
+
+            st.info(
+                "Cadastre produtos para visualizar os indicadores."
+            )
+
+
+
+        st.divider()
+
+
+
+        st.caption(
+            "LIMA ERP | Painel Gerencial"
+        )
+
+
+
+    elif pagina == "Cadastro de Produtos":
+
+
+        st.title(
+            "Cadastro de Produtos"
+        )
+
+        st.info(
+            "Módulo de cadastro será desenvolvido."
+        )
+
+
+
+    elif pagina == "Estoque":
+
+
+        st.title(
+            "Controle de Estoque"
+        )
+
+        st.info(
+            "Módulo de estoque será desenvolvido."
+        )
+
+
+
+    elif pagina == "Caixa":
+
+
+        st.title(
+            "Sistema de Caixa"
+        )
+
+        st.info(
+            "Módulo de vendas será desenvolvido."
+        )
+
+
+
+    elif pagina == "Painel Gerencial":
+
+
+        st.title(
+            "Painel Gerencial"
+        )
+
+        st.info(
+            "Indicadores e gráficos serão desenvolvidos."
+        )
+
+
+
+    elif pagina == "Sobre Nós":
+
+
+        st.title(
+            "Sobre Nós"
+        )
+
+        st.info(
+            "Página institucional será desenvolvida."
+        )
