@@ -1,28 +1,112 @@
-pmo-engenharia/
-├── app.py              # App principal Streamlit
-├── requirements.txt    # Dependências Python
-└── README.md           # Este arquivo
+# LIMA ERP
 
-✨ Funcionalidades
+## Sistema de Gestão Comercial
 
-Dashboard com KPIs — total, concluídos, em andamento, atrasados, nota média
-Gráficos interativos (Plotly):
+O LIMA ERP é um sistema de gestão comercial desenvolvido em Python utilizando Streamlit.
 
-Barras empilhadas por categoria × status
-Rosca por distribuição de status
-Linha por ano × status
-Barras horizontais de progresso médio por categoria
-Scatter: classificação vs. progresso
+O projeto simula um sistema real de um supermercado atacadista, permitindo controle de produtos, estoque, vendas e indicadores gerenciais.
 
+O objetivo do projeto é aplicar conceitos de programação, análise de dados e desenvolvimento de sistemas em uma aplicação prática.
 
-Filtros dinâmicos — por ano, categoria, status e busca por texto
-CRUD completo — adicionar, editar e excluir projetos
-Importar / Exportar CSV
-Dados persistem na sessão
+---
 
+# Funcionalidades
 
-🛠 Tecnologias
-LibUsoStreamlitInterface webPandasManipulação de dadosPlotlyGráficos interativos
+## Autenticação de usuários
 
-📄 Licença
-MIT — livre para uso e modificação.
+Sistema com diferentes níveis de acesso:
+
+- Administrador
+- Funcionário de estoque
+- Operador de caixa
+
+Cada perfil possui permissões específicas dentro do sistema.
+
+---
+
+## Cadastro de Produtos
+
+Cadastro completo contendo:
+
+- Código automático do produto
+- Nome
+- Categoria
+- Marca
+- Fornecedor
+- Preço de compra
+- Preço de venda
+- Quantidade em estoque
+- Estoque mínimo
+- Localização
+- Data de validade
+- Descrição
+
+---
+
+## Controle de Estoque
+
+Recursos:
+
+- Visualização dos produtos cadastrados
+- Pesquisa por nome
+- Filtro por categoria
+- Controle de quantidade
+- Alertas de estoque baixo
+- Cálculo do valor armazenado
+
+---
+
+## Sistema de Caixa
+
+Módulo de vendas contendo:
+
+- Seleção de produtos
+- Carrinho de compras
+- Cálculo automático
+- Desconto
+- Formas de pagamento
+- Registro de vendas
+
+---
+
+## Painel Gerencial
+
+Dashboard administrativo com:
+
+- Quantidade de produtos cadastrados
+- Valor total do estoque
+- Quantidade de vendas
+- Faturamento
+- Produtos por categoria
+- Ranking de produtos vendidos
+
+---
+
+## Comprovante em PDF
+
+O sistema permite gerar comprovantes de venda em PDF.
+
+---
+
+## Página Institucional
+
+Página "Sobre Nós" contendo:
+
+- História da empresa
+- Estrutura
+- Setores
+- Contato
+- Identidade visual
+
+---
+
+# Tecnologias utilizadas
+
+- Python
+- Streamlit
+- Pandas
+- ReportLab
+
+---
+
+# Estrutura do projeto
